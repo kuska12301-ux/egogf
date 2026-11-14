@@ -9,10 +9,24 @@
   let authMode = 'login';
   let activeTtt = null;
   let activeCode = null;
-  let lobbyData = { ticTacToe: [], codebreaker: [] };
+  let lobbyData = { ticTacToe: [], codebreaker: [], wordDuel: [] };
   let lastTttSignature = '';
   let lastCodeSignature = '';
+  let lastWordSignature = '';
   let modalAction = null;
+  let pendingDuel = null;
+
+  const themeToggle = $('#themeToggle');
+  function setTheme(theme) {
+    const blue = theme === 'blue';
+    document.body.dataset.theme = blue ? 'blue' : 'pink';
+    themeToggle.setAttribute('aria-label', blue ? 'Включить розовую тему' : 'Включить голубую тему');
+    themeToggle.setAttribute('aria-pressed', String(blue));
+    document.querySelector('meta[name="theme-color"]').content = blue ? '#c6e8fa' : '#f7b7d0';
+    localStorage.setItem('egor_theme', blue ? 'blue' : 'pink');
+  }
+  setTheme(localStorage.getItem('egor_theme') || 'pink');
+  themeToggle.addEventListener('click', () => setTheme(document.body.dataset.theme === 'blue' ? 'pink' : 'blue'));
 
   async function api(path, options = {}) {
     const response = await fetch(path, {
@@ -70,22 +84,22 @@
     card.className = 'lobby-card';
     const badge = document.createElement('div');
     badge.className = 'lobby-badge';
-    badge.textContent = game === 'ttt' ? '✕○' : '⌁';
+    badge.textContent = game === 'ttt' ? '✕○' : game === 'word' ? 'АБ' : '⌁';
     const meta = document.createElement('div');
     meta.className = 'lobby-meta';
     const title = document.createElement('b');
-    title.textContent = game === 'ttt' ? 'Партия ' + lobby.code : 'Комната ' + lobby.code;
+    title.textContent = (game === 'ttt' ? 'Партия ' : game === 'word' ? 'Дуэль слов ' : 'Дуэль кодов ') + lobby.code;
     const detail = document.createElement('span');
     if (game === 'ttt') {
       detail.textContent = userName(lobby.players.x) + ' · свободно место для ○';
     } else {
-      detail.textContent = userName(lobby.players[0]) + ' · игроков ' + lobby.players.length + '/4';
+      detail.textContent = userName(lobby.players[0]) + ' · ждёт соперника';
     }
     const join = document.createElement('button');
     join.type = 'button';
     join.className = 'join-button';
     join.textContent = 'Войти →';
-    join.addEventListener('click', () => joinLobby(game, lobby.id));
+    join.addEventListener('click', () => game === 'ttt' ? joinLobby(game, lobby.id) : openDuelSecret(game, lobby.id));
     meta.append(title, detail);
     card.append(badge, meta, join);
     return card;
@@ -154,27 +168,30 @@
     container.append(header, turn, board);
   }
 
-  function renderCodeGame(lobby) {
-    const container = $('#codeActive');
+  function renderDuelGame(lobby, kind) {
+    const isWord = kind === 'word';
+    const container = $(isWord ? '#wordActive' : '#codeActive');
+    const signature = JSON.stringify(lobby);
+    const previous = isWord ? lastWordSignature : lastCodeSignature;
     if (!lobby) {
       container.hidden = true;
       container.replaceChildren();
-      lastCodeSignature = '';
+      if (isWord) lastWordSignature = '';
+      else lastCodeSignature = '';
       return;
     }
-    const signature = JSON.stringify(lobby);
-    if (signature === lastCodeSignature && !container.hidden) return;
-    lastCodeSignature = signature;
+    if (signature === previous && !container.hidden) return;
+    if (isWord) lastWordSignature = signature;
+    else lastCodeSignature = signature;
     container.hidden = false;
     container.replaceChildren();
     const header = document.createElement('div');
     header.className = 'active-top';
     const details = document.createElement('div');
     const title = document.createElement('h4');
-    title.textContent = 'Кодовый замок · ' + lobby.code;
-    const names = lobby.players.map((player) => player.displayName).join(', ');
+    title.textContent = (isWord ? 'Дуэль слов · ' : 'Дуэль кодов · ') + lobby.code;
     const subtitle = document.createElement('p');
-    subtitle.textContent = names + (lobby.players.length < 2 ? ' · позови ещё друга' : ' · команда ' + lobby.players.length + '/4');
+    subtitle.textContent = lobby.players.map((item) => item.displayName).join(' · ') + (lobby.opponent ? ' · играют друг против друга' : ' · отправь код другу');
     details.append(title, subtitle);
     const roomCode = document.createElement('button');
     roomCode.type = 'button';
@@ -183,51 +200,81 @@
     roomCode.title = 'Скопировать код комнаты';
     roomCode.addEventListener('click', () => copyRoomCode(lobby.code));
     header.append(details, roomCode);
-    const turn = document.createElement('div');
-    turn.className = 'turn-banner' + (lobby.state === 'playing' && lobby.myTurn ? '' : ' neutral');
-    if (lobby.state === 'waiting') turn.textContent = 'Дождись второго игрока, затем взламывайте код вместе.';
-    else if (lobby.state === 'won') turn.textContent = '🔓 Код открыт ' + lobby.secret + '! Команда справилась.';
-    else if (lobby.state === 'lost') turn.textContent = 'Попытки закончились. Код был ' + lobby.secret + '.';
-    else turn.textContent = lobby.myTurn ? 'Твой ход! Попыток осталось: ' + lobby.triesLeft : 'Ходит ' + userName(lobby.turnPlayer) + ' · осталось ' + lobby.triesLeft;
-    container.append(header, turn);
-    if (lobby.state === 'playing' && lobby.players.length >= 2) {
+    container.append(header);
+
+    const ownSecret = document.createElement('div');
+    ownSecret.className = 'secret-pill';
+    ownSecret.textContent = (isWord ? 'Твоё слово: ' : 'Твой код: ') + (lobby.myWord || lobby.myCode || '•••••');
+    container.append(ownSecret);
+
+    const status = document.createElement('div');
+    const finished = lobby.state === 'finished';
+    status.className = 'turn-banner' + (finished ? ' neutral' : '');
+    if (lobby.state === 'waiting') status.textContent = 'Комната готова. Друг загадает свой секрет, когда присоединится.';
+    else if (finished && lobby.winner) status.textContent = lobby.winner.id === profile.id ? '🏆 Ты победил! Другой секрет пока остался закрытым.' : '🏆 Победил ' + lobby.winner.displayName + '!';
+    else if (finished) status.textContent = 'Ничья! Оба секрета оказались непростыми.';
+    else if (lobby.mySolved) status.textContent = '🎉 Ты угадал секрет друга! Ждём результат соперника.';
+    else if (lobby.opponentSolved) status.textContent = 'Друг угадал твой секрет. Успей разгадать его слово!';
+    else status.textContent = 'Твои попытки: ' + lobby.triesLeft + ' · попытки друга: ' + lobby.opponentTries + '/8';
+    container.append(status);
+    if (finished && lobby.opponentSecret) {
+      const reveal = document.createElement('div');
+      reveal.className = 'secret-reveal';
+      reveal.textContent = (isWord ? 'Слово друга: ' : 'Код друга: ') + lobby.opponentSecret;
+      container.append(reveal);
+    }
+
+    if (lobby.state === 'playing' && !lobby.mySolved && lobby.triesLeft > 0) {
       const controls = document.createElement('form');
-      controls.className = 'code-controls';
+      controls.className = isWord ? 'word-form' : 'code-controls';
       const input = document.createElement('input');
       input.className = 'code-input';
-      input.name = 'guess';
+      input.name = isWord ? 'guessWord' : 'guessCode';
       input.type = 'text';
-      input.inputMode = 'numeric';
+      input.inputMode = isWord ? 'text' : 'numeric';
       input.autocomplete = 'off';
-      input.placeholder = 'Три разные цифры';
-      input.maxLength = 3;
-      input.pattern = '[0-9]{3}';
-      input.setAttribute('aria-label', 'Трёхзначная догадка');
-      input.disabled = !lobby.myTurn;
+      input.placeholder = isWord ? 'СЛОВО ИЗ 5 БУКВ' : 'ТРИ РАЗНЫЕ ЦИФРЫ';
+      input.maxLength = isWord ? 5 : 3;
+      input.pattern = isWord ? '[А-Яа-яЁё]{5}' : '[0-9]{3}';
+      input.setAttribute('aria-label', isWord ? 'Попробуй угадать слово соперника' : 'Попробуй угадать код соперника');
       const submit = document.createElement('button');
       submit.className = 'primary-button';
       submit.type = 'submit';
-      submit.textContent = 'Проверить';
-      submit.disabled = !lobby.myTurn;
+      submit.textContent = 'Проверить ↗';
       controls.append(input, submit);
       controls.addEventListener('submit', (event) => {
         event.preventDefault();
-        submitGuess(lobby.id, input.value);
+        submitGuess(lobby.id, input.value, kind);
       });
       container.append(controls);
     }
+
     const history = document.createElement('div');
     history.className = 'guess-list';
-    lobby.guesses.slice().reverse().forEach((guess) => {
+    lobby.myGuesses.slice().reverse().forEach((guess, index) => {
       const row = document.createElement('div');
-      row.className = 'guess-row';
-      const player = document.createElement('span');
-      player.textContent = guess.by.displayName;
-      const digits = document.createElement('b');
-      digits.textContent = guess.digits;
-      const hint = document.createElement('strong');
-      hint.textContent = guess.exact + ' на месте · ' + guess.misplaced + ' рядом';
-      row.append(player, digits, hint);
+      row.className = 'guess-row' + (isWord ? ' word-guess-row' : '');
+      if (isWord) {
+        const turn = document.createElement('span');
+        turn.textContent = 'Попытка ' + (lobby.myGuesses.length - index);
+        const letters = document.createElement('div');
+        letters.className = 'guess-letters';
+        [...guess.guess].forEach((letter, i) => {
+          const tile = document.createElement('b');
+          tile.textContent = letter;
+          tile.className = 'word-tile ' + guess.marks[i];
+          letters.append(tile);
+        });
+        row.append(turn, letters);
+      } else {
+        const turn = document.createElement('span');
+        turn.textContent = 'Попытка ' + (lobby.myGuesses.length - index);
+        const digits = document.createElement('b');
+        digits.textContent = guess.digits;
+        const hint = document.createElement('strong');
+        hint.textContent = guess.exact + ' на месте · ' + guess.misplaced + ' рядом';
+        row.append(turn, digits, hint);
+      }
       history.append(row);
     });
     container.append(history);
@@ -241,12 +288,16 @@
       $('#profileGames').textContent = String(profile.gamesPlayed || 0);
       renderLobbyList($('#tttLobbies'), lobbyData.ticTacToe.open, 'ttt', $('#tttCount'));
       renderLobbyList($('#codeLobbies'), lobbyData.codebreaker.open, 'code', $('#codeCount'));
+      renderLobbyList($('#wordLobbies'), lobbyData.wordDuel.open, 'word', $('#wordCount'));
       activeTtt = lobbyData.ticTacToe.mine.find((game) => game.state === 'waiting' || game.state === 'playing') ||
         lobbyData.ticTacToe.mine.find((game) => game.state === 'won' || game.state === 'draw') || null;
       activeCode = lobbyData.codebreaker.mine.find((game) => game.state === 'waiting' || game.state === 'playing') ||
-        lobbyData.codebreaker.mine.find((game) => game.state === 'won' || game.state === 'lost') || null;
+        lobbyData.codebreaker.mine.find((game) => game.state === 'finished') || null;
+      const activeWord = lobbyData.wordDuel.mine.find((game) => game.state === 'waiting' || game.state === 'playing') ||
+        lobbyData.wordDuel.mine.find((game) => game.state === 'finished') || null;
       renderBoard(activeTtt);
-      renderCodeGame(activeCode);
+      renderDuelGame(activeCode, 'code');
+      renderDuelGame(activeWord, 'word');
     } catch (error) {
       if (/Войди|сессия/i.test(error.message)) {
         profile = null;
@@ -255,13 +306,14 @@
     }
   }
 
-  async function joinLobby(game, id) {
+  async function joinLobby(game, id, secret = '') {
     clearNotice(gameMessage);
     try {
-      const result = game === 'ttt'
-        ? await api('/api/ttt/lobbies/' + encodeURIComponent(id) + '/join', { method: 'POST', body: '{}' })
-        : await api('/api/code/lobbies/' + encodeURIComponent(id) + '/join', { method: 'POST', body: '{}' });
+      const path = game === 'ttt' ? '/api/ttt/lobbies/' : game === 'word' ? '/api/word/lobbies/' : '/api/code/lobbies/';
+      const payload = game === 'ttt' ? {} : { secret };
+      const result = await api(path + encodeURIComponent(id) + '/join', { method: 'POST', body: JSON.stringify(payload) });
       if (game === 'ttt') activeTtt = result.lobby;
+      else if (game === 'word') setGameTab('word');
       else activeCode = result.lobby;
       await pollLobbies();
       showNotice(gameMessage, 'Ты в комнате ' + result.lobby.code + '. Код можно отправить другу.', 'success');
@@ -278,11 +330,11 @@
     } catch (error) { showNotice(gameMessage, error.message); }
   }
 
-  async function submitGuess(id, digits) {
+  async function submitGuess(id, value, game) {
     clearNotice(gameMessage);
     try {
-      await api('/api/code/lobbies/' + encodeURIComponent(id) + '/guess', {
-        method: 'POST', body: JSON.stringify({ digits })
+      await api('/api/' + (game === 'word' ? 'word' : 'code') + '/lobbies/' + encodeURIComponent(id) + '/guess', {
+        method: 'POST', body: JSON.stringify(game === 'word' ? { guess: value } : { digits: value })
       });
       await pollLobbies();
     } catch (error) { showNotice(gameMessage, error.message); }
@@ -308,6 +360,44 @@
     if (game) $('#gameStage').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  function openDuelSecret(game, id = null) {
+    pendingDuel = { game, id };
+    const isWord = game === 'word';
+    $('#duelSecretTitle').textContent = isWord ? 'Загадай слово' : 'Задай свой код';
+    $('#duelSecretHelp').textContent = isWord
+      ? 'Соперник будет угадывать твоё слово, а ты — его. Используй русские буквы.'
+      : 'У каждого будет свой код. Не показывай его другу — он будет угадывать.';
+    $('#duelSecretField').firstChild.textContent = isWord ? 'Секретное слово' : 'Секретный код';
+    const input = $('#duelSecretInput');
+    input.value = '';
+    input.type = 'password';
+    input.inputMode = isWord ? 'text' : 'numeric';
+    input.placeholder = isWord ? 'ПЯТЬ БУКВ' : 'ТРИ ЦИФРЫ';
+    input.maxLength = isWord ? 5 : 3;
+    input.pattern = isWord ? '[А-Яа-яЁё]{5}' : '[0-9]{3}';
+    input.setAttribute('aria-label', isWord ? 'Загадай слово из пяти русских букв' : 'Задай код из трёх разных цифр');
+    $('#duelSecretMessage').hidden = true;
+    $('#duelSecretDialog').showModal();
+    input.focus();
+  }
+
+  $('#duelSecretForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!pendingDuel) return;
+    const { game, id } = pendingDuel;
+    const value = $('#duelSecretInput').value.trim();
+    const secret = game === 'word' ? value.toLocaleUpperCase('ru-RU') : value;
+    const valid = game === 'word' ? /^[А-ЯЁ]{5}$/.test(secret) : /^(?!.*(.).*\1)[0-9]{3}$/.test(secret);
+    if (!valid) return showNotice($('#duelSecretMessage'), game === 'word' ? 'Нужно ровно пять русских букв.' : 'Нужны три разные цифры.');
+    const dialog = $('#duelSecretDialog');
+    dialog.close();
+    const pending = pendingDuel;
+    pendingDuel = null;
+    if (pending.id) await joinLobby(game, pending.id, secret);
+    else await createLobby(game, secret);
+  });
+  $('#duelSecretCancel').addEventListener('click', () => { pendingDuel = null; $('#duelSecretDialog').close(); });
+
   // Solo arcade games: these run locally, so a profile is not required for the mini-game logic.
   const memoryIcons = ['🌙', '🍓', '🛴', '🧸', '⭐', '🎧'];
   let memoryDeck = [];
@@ -320,9 +410,6 @@
   let reactionTimeout = 0;
   let reactionResults = [];
   let reactionRound = 0;
-  const todayWord = ['МЕЧТА', 'ИСКРА', 'ВЕСНА', 'ПТИЦА', 'ДОЖДЬ'][Math.floor(Date.now() / 86400000) % 5];
-  let wordAttempt = 0;
-  let wordDone = false;
 
   function startMemory() {
     clearInterval(memoryTimer);
@@ -444,70 +531,25 @@
     $('#reactionStart').textContent = 'Следующий раунд →';
   }
 
-  function setupWordGame() {
-    const board = $('#wordBoard');
-    board.replaceChildren();
-    for (let row = 0; row < 6; row += 1) {
-      const line = document.createElement('div');
-      line.className = 'word-row';
-      for (let col = 0; col < 5; col += 1) {
-        const tile = document.createElement('span');
-        tile.className = 'word-tile';
-        tile.dataset.row = String(row);
-        tile.dataset.col = String(col);
-        line.append(tile);
-      }
-      board.append(line);
-    }
-  }
-
   $('#memoryRestart').addEventListener('click', startMemory);
   startMemory();
   $('#memoryBest').textContent = localStorage.getItem('egor_memory_best') ? localStorage.getItem('egor_memory_best') + ' очков' : '—';
   $('#reactionBest').textContent = localStorage.getItem('egor_reaction_best') ? localStorage.getItem('egor_reaction_best') + ' мс' : '—';
   $('#reactionStart').addEventListener('click', reactionClick);
-  setupWordGame();
-  $('#wordForm').addEventListener('submit', (event) => {
-    event.preventDefault();
-    if (wordDone) return;
-    const input = $('#wordInput');
-    const guess = input.value.trim().toLocaleUpperCase('ru-RU').replace(/Ё/g, 'Е');
-    if (!/^[А-Я]{5}$/.test(guess)) return showNotice($('#wordMessage'), 'Нужно ввести ровно пять русских букв.');
-    const answer = todayWord.replace(/Ё/g, 'Е');
-    const counts = {};
-    for (const letter of answer) counts[letter] = (counts[letter] || 0) + 1;
-    const marks = Array(5).fill('miss');
-    for (let i = 0; i < 5; i += 1) if (guess[i] === answer[i]) { marks[i] = 'hit'; counts[guess[i]] -= 1; }
-    for (let i = 0; i < 5; i += 1) if (marks[i] !== 'hit' && counts[guess[i]] > 0) { marks[i] = 'near'; counts[guess[i]] -= 1; }
-    const row = wordAttempt++;
-    [...document.querySelectorAll('.word-tile')].filter((tile) => Number(tile.dataset.row) === row).forEach((tile, i) => {
-      tile.textContent = guess[i];
-      tile.classList.add(marks[i]);
-      tile.style.animationDelay = (i * 90) + 'ms';
-    });
-    input.value = '';
-    if (guess === answer || wordAttempt === 6) {
-      wordDone = true;
-      $('#wordInput').disabled = true;
-      $('#wordForm button').disabled = true;
-      showNotice($('#wordMessage'), guess === answer ? 'Угадал за ' + wordAttempt + (wordAttempt === 1 ? ' попытку! ✨' : ' попытки! ✨') : 'Сегодня было слово «' + todayWord + '». Новое появится завтра.', guess === answer ? 'success' : 'error');
-      if (guess === answer) $('#wordBoard').classList.add('game-win');
-    }
-  });
-
-
-  async function createLobby(game) {
+  async function createLobby(game, secret = '') {
     clearNotice(gameMessage);
     try {
-      const result = game === 'ttt'
-        ? await api('/api/ttt/lobbies', { method: 'POST', body: '{}' })
-        : await api('/api/code/lobbies', { method: 'POST', body: '{}' });
+      const path = game === 'ttt' ? '/api/ttt/lobbies' : game === 'word' ? '/api/word/lobbies' : '/api/code/lobbies';
+      const result = await api(path, { method: 'POST', body: JSON.stringify(game === 'ttt' ? {} : { secret }) });
+      if (game === 'code') $('#codeSecret').value = '';
+      if (game === 'word') $('#wordSecret').value = '';
       if (game === 'ttt') activeTtt = result.lobby;
+      else if (game === 'word') setGameTab('word');
       else activeCode = result.lobby;
       await pollLobbies();
       const instructions = game === 'ttt'
         ? 'Отправь другу код ' + result.lobby.code + ' и жди его хода.'
-        : 'Отправь другу код ' + result.lobby.code + '. Когда будет хотя бы два игрока, начинайте угадывать!';
+        : 'Отправь другу код комнаты ' + result.lobby.code + '. Секрет уже сохранён — друг задаст свой, и начнётся дуэль!';
       showNotice(gameMessage, instructions, 'success');
     } catch (error) { showNotice(gameMessage, error.message); }
   }
@@ -559,17 +601,9 @@
     finally { submit.disabled = false; }
   });
 
-  $('#logoutButton').addEventListener('click', async () => {
-    try { await api('/api/auth/logout', { method: 'POST', body: '{}' }); } catch (error) {}
-    profile = null;
-    activeTtt = null;
-    activeCode = null;
-    renderProfile();
-    authCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  });
-
   $('#createTtt').addEventListener('click', () => createLobby('ttt'));
-  $('#createCode').addEventListener('click', () => createLobby('code'));
+  $('#createCode').addEventListener('click', () => createLobby('code', $('#codeSecret').value.trim()));
+  $('#createWord').addEventListener('click', () => createLobby('word', $('#wordSecret').value.trim().toLocaleUpperCase('ru-RU')));
   document.querySelectorAll('[data-game]').forEach((card) => {
     card.addEventListener('click', () => setGameTab(card.dataset.game));
   });

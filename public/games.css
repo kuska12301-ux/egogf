@@ -61,3 +61,51 @@ body{background:radial-gradient(ellipse at 10% 12%,#fff9 0,transparent 22%),radi
 @media(max-width:760px){.game-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.game-card{min-height:275px}.card-art{height:118px;flex-basis:118px}}
 @media(max-width:460px){.game-grid{grid-template-columns:1fr;gap:10px}.game-card{display:grid;grid-template-columns:112px minmax(0,1fr);align-items:stretch;min-height:0;padding:8px;border-radius:20px}.card-art{height:auto;min-height:154px;flex-basis:auto;border-radius:14px}.card-copy{align-content:center;gap:5px;padding:9px}.card-copy strong{font-size:14px}.card-copy>span:nth-of-type(2){min-height:0;font-size:9px}.card-type{font-size:7px}.word-mini{width:25px;height:32px;margin:0 1px;font-size:14px}.card-cta{margin-top:2px;padding-top:7px;font-size:9px}.card-cta b{width:22px;height:22px}.catalog-heading h3{font-size:21px}.catalog-heading p{max-width:270px;font-size:10px}}
 @media(prefers-reduced-motion:reduce){.game-card,.card-art:before,.card-art:after,.art-glow,.art-x,.art-o,.art-spark,.lock-body,.memory-mini,.reaction-ring,.bolt,.word-mini{animation:none!important;transition:none!important}}
+
+/* Theme toggle and two-player duel panels */
+.brand-group{display:flex;align-items:center;gap:10px}
+.theme-toggle{width:36px;height:36px;display:grid;place-items:center;border:1px solid #fff;background:#fff9;border-radius:12px;color:#9e5c7d;box-shadow:0 5px 14px #85415c12;transition:transform .2s,background .25s,color .25s}
+.theme-toggle:hover{transform:translateY(-2px) rotate(-5deg);background:#fff}
+.theme-toggle svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.duel-setup{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,.75fr);align-items:end;gap:10px;margin-bottom:12px}
+.duel-setup .field{min-width:0}
+.duel-setup .primary-button{min-height:43px}
+.secret-pill,.secret-reveal{padding:9px 12px;margin:8px 0;border-radius:12px;background:#f7eaf0;color:#a34e77;font-size:11px;font-weight:800;letter-spacing:.04em}
+.secret-reveal{background:#e8f7ee;color:#397952;text-align:center}
+.word-guess-row{grid-template-columns:auto minmax(0,1fr);align-items:center}
+.guess-letters{display:flex;justify-content:flex-end;gap:4px}
+.guess-letters .word-tile{width:34px;height:34px;min-width:0;border:0;border-radius:8px;font-size:14px}
+body,.hero,.profile-bar,.auth-card,.play-panel,.game-card,.active-game,.theme-toggle,.account-button,.primary-button{transition:background-color .35s,color .35s,border-color .35s,box-shadow .35s}
+body[data-theme="blue"]{--ink:#30465a;--muted:#71889a;--pink:#4d92c2;--paper:#fbfdff;background:radial-gradient(ellipse at 83% 3%,#fff 0,transparent 31%),linear-gradient(158deg,#e3f4fc,#badff3 82%);color:var(--ink)}
+body[data-theme="blue"] .brand-mark,body[data-theme="blue"] .theme-toggle{color:#4d89b3;box-shadow:0 5px 16px #467b9f1c}
+body[data-theme="blue"] .brand-dot,body[data-theme="blue"] .hero h1 span,body[data-theme="blue"] .eyebrow,body[data-theme="blue"] .section-kicker,body[data-theme="blue"] .footer a,body[data-theme="blue"] .icon-button{color:#4d88b2}
+body[data-theme="blue"] .hero{background:linear-gradient(118deg,#ffffffdc 0,#ffffffa8 56%,#d9effa 100%);box-shadow:0 18px 50px #477e9b22}
+body[data-theme="blue"] .profile-bar,body[data-theme="blue"] .auth-card,body[data-theme="blue"] .play-panel,body[data-theme="blue"] .active-game{background:#fafdffed;border-color:#fff;box-shadow:0 16px 42px #477e9b1b}
+body[data-theme="blue"] .account-button,body[data-theme="blue"] .quiet-button,body[data-theme="blue"] .back-games{background:#ffffffd9;border-color:#fff;color:#405c73}
+body[data-theme="blue"] .primary-button{background:linear-gradient(110deg,#528db8,#78b6dc);box-shadow:0 7px 16px #477e9b2b}
+body[data-theme="blue"] .auth-tabs,body[data-theme="blue"] .game-tabs{background:#dceef8;border-color:#f5fbff}
+body[data-theme="blue"] .auth-tab.active,body[data-theme="blue"] .game-tab.active{background:#fff;color:#4c83a9;box-shadow:0 5px 15px #477e9b1c}
+body[data-theme="blue"] .field input,body[data-theme="blue"] .code-input{border-color:#d5e7f1;background:#fff;color:#30465a}
+body[data-theme="blue"] .field input:focus{border-color:#75aed0;box-shadow:0 0 0 3px #75aed028}
+body[data-theme="blue"] .game-intro .game-icon{background:#e3f1f9;color:#568db4}
+body[data-theme="blue"] .rules{background:#eff7fc;border-color:#dcecf6}
+body[data-theme="blue"] .turn-banner,body[data-theme="blue"] .secret-pill{background:#e8f3fa;color:#4e83a6}
+body[data-theme="blue"] .turn-banner.neutral{background:#f0f5f8;color:#708696}
+body[data-theme="blue"] .lobby-card,body[data-theme="blue"] .cell{background:#fff;border-color:#dbeaf2}
+body[data-theme="blue"] .lobby-badge,body[data-theme="blue"] .lobby-card .join-button,body[data-theme="blue"] .room-code{background:#e5f1f8;color:#4b82a6}
+body[data-theme="blue"] .list-heading span{background:#e7f2f8;color:#6e8ca0}
+body[data-theme="blue"] .empty{border-color:#d4e6f0;color:#7d96a6}
+body[data-theme="blue"] .tile-back{background:#d6eaf6;color:#5a87a6}
+body[data-theme="blue"] .tile-front{background:#eff8fd;color:#5686a5}
+body[data-theme="blue"] .art-orbit{border-color:#86b9d5aa}
+body[data-theme="blue"] .orbit-two{border-color:#b4d7e9}
+body[data-theme="blue"] .art-star{color:#6ea7c9}
+body[data-theme="blue"] .ttt-intro .game-icon,body[data-theme="blue"] .code-intro .game-icon,body[data-theme="blue"] .memory-intro .game-icon,body[data-theme="blue"] .reaction-intro .game-icon,body[data-theme="blue"] .word-intro .game-icon{background:#e3f1f9;color:#568db4}
+body[data-theme="blue"] .modal-card{background:#fafdff;border-color:#fff;box-shadow:0 22px 70px #315c7940}
+body[data-theme="blue"] .modal-icon{background:#e3f1f9;color:#568db4}
+body[data-theme="blue"] .guess-row{background:#edf5fa}
+body[data-theme="blue"] .word-tile{border-color:#d3e3ed}
+body[data-theme="blue"] .footer{color:#718da1}
+body[data-theme="blue"] .game-card{--card-wash:#dceefa;--card-accent:#528bb3;background:linear-gradient(145deg,#fff,#fafdff 65%,var(--card-wash));box-shadow:0 12px 28px #477e9b1b,0 1px 0 #fff inset}
+body[data-theme="blue"] .card-cta{border-color:#d5e8f2}
+@media(max-width:600px){.duel-setup{grid-template-columns:1fr}.duel-setup .primary-button{width:100%}.brand-group{gap:7px}.theme-toggle{width:34px;height:34px}}

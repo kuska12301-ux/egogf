@@ -11,7 +11,7 @@
 <body>
   <main class="shell">
     <header class="topbar">
-      <a class="brand" href="/" aria-label="Егор, главная"><span class="brand-mark">е</span><span>егор<span class="brand-dot">.</span></span></a>
+      <div class="brand-group"><a class="brand" href="/" aria-label="Егор, главная"><span class="brand-mark">е</span><span>егор<span class="brand-dot">.</span></span></a><button id="themeToggle" class="theme-toggle" type="button" aria-label="Включить голубую тему" title="Сменить цвет темы"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6"></rect><path d="M10 5h4M10.5 18.5h3"></path></svg></button></div>
       <div class="account-area">
         <span id="connection" class="connection"><i></i> Онлайн-игры</span>
         <button id="accountButton" class="account-button" type="button">Войти</button>
@@ -31,7 +31,6 @@
       <div class="profile-avatar" id="profileAvatar">Е</div>
       <div class="profile-copy"><b id="profileName">Игрок</b><span id="profileHandle">@игрок</span></div>
       <div class="profile-stats"><b id="profileGames">0</b><span>игр</span></div>
-      <button id="logoutButton" class="quiet-button" type="button">Выйти</button>
     </section>
 
     <section id="authCard" class="auth-card">
@@ -61,10 +60,10 @@
         <div class="catalog-heading"><div><div class="section-kicker">АРКАДА ЕГОРА</div><h3>Во что сыграем?</h3><p>Выбирай настроение — компанию найдём по ходу.</p></div><span class="catalog-count">05 <small>ИГР</small></span></div>
         <div class="game-grid">
           <button class="game-card game-card-pink" type="button" data-game="ttt"><span class="card-art"><i class="art-glow"></i><b class="art-x">×</b><b class="art-o">○</b><i class="art-spark">✦</i></span><span class="card-copy"><span class="card-type">ОНЛАЙН · 2 ИГРОКА</span><strong>Крестики-нолики</strong><span>Быстрый матч с другом в личной комнате.</span><span class="card-cta">Открыть игру <b>↗</b></span></span></button>
-          <button class="game-card game-card-violet" type="button" data-game="code"><span class="card-art"><i class="lock-shackle"></i><b class="lock-body">⌁</b><i class="art-spark">✦</i></span><span class="card-copy"><span class="card-type">КОМАНДНАЯ · ДО 4 ИГРОКОВ</span><strong>Кодовый замок</strong><span>Объединитесь и взломайте секретный код.</span><span class="card-cta">Открыть игру <b>↗</b></span></span></button>
+          <button class="game-card game-card-violet" type="button" data-game="code"><span class="card-art"><i class="lock-shackle"></i><b class="lock-body">⌁</b><i class="art-spark">✦</i></span><span class="card-copy"><span class="card-type">ДУЭЛЬ · 2 ИГРОКА</span><strong>Кодовый замок</strong><span>Загадайте по коду и попробуйте раскрыть код друга.</span><span class="card-cta">Открыть игру <b>↗</b></span></span></button>
           <button class="game-card game-card-peach" type="button" data-game="memory"><span class="card-art"><i class="memory-mini m1">✦</i><i class="memory-mini m2">?</i><i class="memory-mini m3">?</i><i class="memory-mini m4">✦</i><i class="art-spark">✧</i></span><span class="card-copy"><span class="card-type">СОЛО · НА РЕКОРД</span><strong>Память</strong><span>Найди все пары и побей свой рекорд.</span><span class="card-cta">Открыть игру <b>↗</b></span></span></button>
           <button class="game-card game-card-blue" type="button" data-game="reaction"><span class="card-art"><i class="reaction-ring"></i><b class="bolt">ϟ</b><i class="art-spark">✦</i></span><span class="card-copy"><span class="card-type">СОЛО · 5 РАУНДОВ</span><strong>Реакция</strong><span>Лови сигнал и проверь свою скорость.</span><span class="card-cta">Открыть игру <b>↗</b></span></span></button>
-          <button class="game-card game-card-mint" type="button" data-game="word"><span class="card-art"><i class="word-mini">С</i><i class="word-mini">Л</i><i class="word-mini">О</i><i class="word-mini">В</i><i class="word-mini">О</i><i class="art-spark">✧</i></span><span class="card-copy"><span class="card-type">ЕЖЕДНЕВНЫЙ ЧЕЛЛЕНДЖ</span><strong>Слово дня</strong><span>Шесть попыток, чтобы раскрыть загадку.</span><span class="card-cta">Открыть игру <b>↗</b></span></span></button>
+          <button class="game-card game-card-mint" type="button" data-game="word"><span class="card-art"><i class="word-mini">С</i><i class="word-mini">Л</i><i class="word-mini">О</i><i class="word-mini">В</i><i class="word-mini">О</i><i class="art-spark">✧</i></span><span class="card-copy"><span class="card-type">ДУЭЛЬ · 2 ИГРОКА</span><strong>Угадай слово</strong><span>Загадайте по слову и угадайте слово соперника.</span><span class="card-cta">Открыть игру <b>↗</b></span></span></button>
         </div>
       </div>
       <div id="gameStage" hidden><button id="backToGames" class="back-games" type="button">← Все игры</button>
@@ -78,9 +77,9 @@
       </section>
 
       <section id="codeSection" class="play-panel" hidden>
-        <div class="game-intro code-intro"><div class="game-icon">⌁</div><div><h3>Кодовый замок</h3><p>Командой угадайте трёхзначный код по подсказкам.</p></div></div>
-        <div class="rules"><b>Как играть</b><span>В коде три разные цифры. «На месте» — цифра стоит верно, «рядом» — есть в коде, но стоит в другом месте. У вас 8 попыток.</span></div>
-        <button id="createCode" class="primary-button" type="button">＋ Создать комнату</button>
+        <div class="game-intro code-intro"><div class="game-icon">⌁</div><div><h3>Кодовый замок</h3><p>У каждого свой секретный код — угадай код соперника.</p></div></div>
+        <div class="rules"><b>Как играть</b><span>Придумай три разные цифры и позови друга. У каждого по 8 попыток: зелёная подсказка — цифра на месте, золотая — есть в коде, но в другой позиции.</span></div>
+        <div class="duel-setup"><label class="field">Твой секретный код<input id="codeSecret" class="code-input" type="password" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Три разные цифры" aria-label="Твой секретный код"></label><button id="createCode" class="primary-button" type="button">＋ Создать дуэль</button></div>
         <div id="codeActive" class="active-game" hidden></div>
         <div class="list-heading"><b>Открытые комнаты</b><span id="codeCount">0</span></div>
         <div id="codeLobbies" class="lobby-list"><div class="empty">Войди в профиль, чтобы увидеть комнаты.</div></div>
@@ -101,12 +100,13 @@
         <div class="notice">Сыграй пять раундов и узнай среднее время. Не нажимай до вспышки!</div>
       </section>
 
-      <section id="wordSection" class="play-panel solo-panel" hidden>
-        <div class="game-intro word-intro"><div class="game-icon">А</div><div><h3>Слово дня</h3><p>Угадай слово из пяти букв за шесть попыток.</p></div></div>
-        <div class="rules"><b>Подсказки</b><span>Зелёный — буква на месте. Золотой — буква есть, но в другом месте. Слово меняется каждый день.</span></div>
-        <div id="wordBoard" class="word-board" aria-label="Попытки угадать слово"></div>
-        <form id="wordForm" class="word-form"><input id="wordInput" class="code-input" maxlength="5" autocomplete="off" placeholder="ПЯТЬ БУКВ" aria-label="Твоё слово"><button class="primary-button" type="submit">Проверить ↗</button></form>
-        <div id="wordMessage" class="notice" role="status" hidden></div>
+      <section id="wordSection" class="play-panel" hidden>
+        <div class="game-intro word-intro"><div class="game-icon">А</div><div><h3>Угадай слово</h3><p>Каждый загадывает слово и отгадывает слово друга.</p></div></div>
+        <div class="rules"><b>Подсказки</b><span>Зелёный — буква на месте. Золотой — буква есть, но стоит иначе. Загадывайте по одному русскому слову из пяти букв. На отгадку — 8 попыток.</span></div>
+        <div class="duel-setup"><label class="field">Твоё слово-секрет<input id="wordSecret" class="code-input" type="password" maxlength="5" autocomplete="off" placeholder="ПЯТЬ БУКВ" aria-label="Твоё секретное слово"></label><button id="createWord" class="primary-button" type="button">＋ Создать дуэль слов</button></div>
+        <div id="wordActive" class="active-game" hidden></div>
+        <div class="list-heading"><b>Открытые дуэли</b><span id="wordCount">0</span></div>
+        <div id="wordLobbies" class="lobby-list"><div class="empty">Войди в профиль, чтобы увидеть комнаты.</div></div>
       </section>
       <div id="gameMessage" class="notice" role="status" hidden></div>
       </div>
@@ -122,6 +122,17 @@
       <h2 id="modalTitle">Подтверждение</h2>
       <p id="modalText" class="muted"></p>
       <div class="modal-actions"><button class="quiet-button" value="cancel">Отмена</button><button id="modalConfirm" class="primary-button" value="default">Продолжить</button></div>
+    </form>
+  </dialog>
+  <dialog id="duelSecretDialog" class="modal">
+    <form id="duelSecretForm" class="modal-card">
+      <button class="modal-close" value="cancel" formmethod="dialog" aria-label="Закрыть">×</button>
+      <div id="duelSecretIcon" class="modal-icon">✦</div>
+      <h2 id="duelSecretTitle">Задай секрет</h2>
+      <p id="duelSecretHelp" class="muted">Придумай секрет, который будет угадывать соперник.</p>
+      <label id="duelSecretField" class="field">Твой секрет<input id="duelSecretInput" maxlength="5" autocomplete="off" required></label>
+      <div id="duelSecretMessage" class="notice error" role="status" hidden></div>
+      <div class="modal-actions"><button class="quiet-button" type="button" id="duelSecretCancel">Отмена</button><button id="duelSecretSubmit" class="primary-button" type="submit">Продолжить ↗</button></div>
     </form>
   </dialog>
   <script src="/games.js" defer></script>
