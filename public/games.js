@@ -53,6 +53,7 @@
     $('#profileBar').hidden = !loggedIn;
     $('#accountButton').textContent = loggedIn ? profile.displayName : 'Войти';
     if (!loggedIn) return;
+    setGameTab(null);
     $('#profileName').textContent = profile.displayName;
     $('#profileHandle').textContent = '@' + profile.username;
     $('#profileAvatar').textContent = Array.from(profile.displayName)[0].toUpperCase();
@@ -298,11 +299,13 @@
 
   function setGameTab(game) {
     const games = ['ttt', 'code', 'memory', 'reaction', 'word'];
+    $('#gameCatalog').hidden = Boolean(game);
+    $('#gameStage').hidden = !game;
     games.forEach((name) => {
-      $('#' + name + 'Tab').classList.toggle('active', game === name);
       $('#' + name + 'Section').hidden = game !== name;
     });
     clearNotice(gameMessage);
+    if (game) $('#gameStage').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // Solo arcade games: these run locally, so a profile is not required for the mini-game logic.
@@ -567,11 +570,10 @@
 
   $('#createTtt').addEventListener('click', () => createLobby('ttt'));
   $('#createCode').addEventListener('click', () => createLobby('code'));
-  $('#tttTab').addEventListener('click', () => setGameTab('ttt'));
-  $('#codeTab').addEventListener('click', () => setGameTab('code'));
-  $('#memoryTab').addEventListener('click', () => setGameTab('memory'));
-  $('#reactionTab').addEventListener('click', () => setGameTab('reaction'));
-  $('#wordTab').addEventListener('click', () => setGameTab('word'));
+  document.querySelectorAll('[data-game]').forEach((card) => {
+    card.addEventListener('click', () => setGameTab(card.dataset.game));
+  });
+  $('#backToGames').addEventListener('click', () => setGameTab(null));
   $('#refreshButton').addEventListener('click', () => pollLobbies());
 
   (async () => {

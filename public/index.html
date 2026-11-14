@@ -57,13 +57,17 @@
         <div><div class="section-kicker">КОМНАТЫ ДЛЯ ИГРЫ</div><h2>Выбирай игру</h2></div>
         <button id="refreshButton" class="icon-button" type="button" aria-label="Обновить список">↻</button>
       </div>
-      <div class="game-tabs" role="tablist">
-        <button id="tttTab" class="game-tab active" type="button" role="tab"><span>✕</span> Крестики-нолики</button>
-        <button id="codeTab" class="game-tab" type="button" role="tab"><span>⌁</span> Кодовый замок</button>
-        <button id="memoryTab" class="game-tab" type="button" role="tab"><span>✦</span> Память</button>
-        <button id="reactionTab" class="game-tab" type="button" role="tab"><span>⚡</span> Реакция</button>
-        <button id="wordTab" class="game-tab" type="button" role="tab"><span>А</span> Слово дня</button>
+      <div id="gameCatalog" class="game-catalog">
+        <div class="catalog-heading"><div><div class="section-kicker">АРКАДА ЕГОРА</div><h3>Во что сыграем?</h3><p>Выбирай настроение — компанию найдём по ходу.</p></div><span class="catalog-count">05 <small>ИГР</small></span></div>
+        <div class="game-grid">
+          <button class="game-card game-card-pink" type="button" data-game="ttt"><span class="card-art"><i class="art-glow"></i><b class="art-x">×</b><b class="art-o">○</b><i class="art-spark">✦</i></span><span class="card-copy"><span class="card-type">ОНЛАЙН · 2 ИГРОКА</span><strong>Крестики-нолики</strong><span>Быстрый матч с другом в личной комнате.</span><span class="card-cta">Открыть игру <b>↗</b></span></span></button>
+          <button class="game-card game-card-violet" type="button" data-game="code"><span class="card-art"><i class="lock-shackle"></i><b class="lock-body">⌁</b><i class="art-spark">✦</i></span><span class="card-copy"><span class="card-type">КОМАНДНАЯ · ДО 4 ИГРОКОВ</span><strong>Кодовый замок</strong><span>Объединитесь и взломайте секретный код.</span><span class="card-cta">Открыть игру <b>↗</b></span></span></button>
+          <button class="game-card game-card-peach" type="button" data-game="memory"><span class="card-art"><i class="memory-mini m1">✦</i><i class="memory-mini m2">?</i><i class="memory-mini m3">?</i><i class="memory-mini m4">✦</i><i class="art-spark">✧</i></span><span class="card-copy"><span class="card-type">СОЛО · НА РЕКОРД</span><strong>Память</strong><span>Найди все пары и побей свой рекорд.</span><span class="card-cta">Открыть игру <b>↗</b></span></span></button>
+          <button class="game-card game-card-blue" type="button" data-game="reaction"><span class="card-art"><i class="reaction-ring"></i><b class="bolt">ϟ</b><i class="art-spark">✦</i></span><span class="card-copy"><span class="card-type">СОЛО · 5 РАУНДОВ</span><strong>Реакция</strong><span>Лови сигнал и проверь свою скорость.</span><span class="card-cta">Открыть игру <b>↗</b></span></span></button>
+          <button class="game-card game-card-mint" type="button" data-game="word"><span class="card-art"><i class="word-mini">С</i><i class="word-mini">Л</i><i class="word-mini">О</i><i class="word-mini">В</i><i class="word-mini">О</i><i class="art-spark">✧</i></span><span class="card-copy"><span class="card-type">ЕЖЕДНЕВНЫЙ ЧЕЛЛЕНДЖ</span><strong>Слово дня</strong><span>Шесть попыток, чтобы раскрыть загадку.</span><span class="card-cta">Открыть игру <b>↗</b></span></span></button>
+        </div>
       </div>
+      <div id="gameStage" hidden><button id="backToGames" class="back-games" type="button">← Все игры</button>
 
       <section id="tttSection" class="play-panel">
         <div class="game-intro ttt-intro"><div class="game-icon">✕<small>○</small></div><div><h3>Крестики-нолики</h3><p>Открой лобби и сыграй один на один.</p></div></div>
@@ -105,6 +109,7 @@
         <div id="wordMessage" class="notice" role="status" hidden></div>
       </section>
       <div id="gameMessage" class="notice" role="status" hidden></div>
+      </div>
     </section>
 
     <footer class="footer"><span>Маленький уголок для больших матчей ✦</span><a href="/classic.html">Старые мини-игры →</a></footer>
