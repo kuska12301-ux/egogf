@@ -5,7 +5,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-const root = path.resolve(__dirname, 'public');
+const publicRoot = path.resolve(__dirname, 'public');
+// Some BotHost deployments flatten the uploaded public directory into /app.
+const root = fs.existsSync(publicRoot) ? publicRoot : __dirname;
 const dataRoot = path.resolve(process.env.DATA_DIR || path.join(__dirname, 'data'));
 const dataFile = path.join(dataRoot, 'app-data.json');
 const port = Number(process.env.PORT) || 3000;
