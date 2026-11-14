@@ -60,6 +60,9 @@
       <div class="game-tabs" role="tablist">
         <button id="tttTab" class="game-tab active" type="button" role="tab"><span>✕</span> Крестики-нолики</button>
         <button id="codeTab" class="game-tab" type="button" role="tab"><span>⌁</span> Кодовый замок</button>
+        <button id="memoryTab" class="game-tab" type="button" role="tab"><span>✦</span> Память</button>
+        <button id="reactionTab" class="game-tab" type="button" role="tab"><span>⚡</span> Реакция</button>
+        <button id="wordTab" class="game-tab" type="button" role="tab"><span>А</span> Слово дня</button>
       </div>
 
       <section id="tttSection" class="play-panel">
@@ -77,6 +80,29 @@
         <div id="codeActive" class="active-game" hidden></div>
         <div class="list-heading"><b>Открытые комнаты</b><span id="codeCount">0</span></div>
         <div id="codeLobbies" class="lobby-list"><div class="empty">Войди в профиль, чтобы увидеть комнаты.</div></div>
+      </section>
+
+      <section id="memorySection" class="play-panel solo-panel" hidden>
+        <div class="game-intro memory-intro"><div class="game-icon">✦</div><div><h3>Память</h3><p>Найди все пары. Запоминай карточки и побей свой рекорд.</p></div></div>
+        <div class="solo-stats"><span>Ходы <b id="memoryMoves">0</b></span><span>Время <b id="memoryTime">00:00</b></span><span>Рекорд <b id="memoryBest">—</b></span></div>
+        <div id="memoryBoard" class="memory-board" aria-label="Карточки игры Память"></div>
+        <button id="memoryRestart" class="primary-button" type="button">↻ Новая игра</button>
+        <div id="memoryMessage" class="notice" role="status" hidden></div>
+      </section>
+
+      <section id="reactionSection" class="play-panel solo-panel" hidden>
+        <div class="game-intro reaction-intro"><div class="game-icon">⚡</div><div><h3>Реакция</h3><p>Дождись сигнала и нажми как можно быстрее.</p></div></div>
+        <div class="reaction-arena" id="reactionArena"><div class="reaction-orbit"></div><div id="reactionSignal" class="reaction-signal">✦</div><div id="reactionLabel" class="reaction-label">Готов проверить реакцию?</div><button id="reactionStart" class="reaction-button" type="button">Начать раунд</button></div>
+        <div class="solo-stats"><span>Твой результат <b id="reactionResult">—</b></span><span>Лучший <b id="reactionBest">—</b></span><span>Раунд <b id="reactionRounds">0/5</b></span></div>
+        <div class="notice">Сыграй пять раундов и узнай среднее время. Не нажимай до вспышки!</div>
+      </section>
+
+      <section id="wordSection" class="play-panel solo-panel" hidden>
+        <div class="game-intro word-intro"><div class="game-icon">А</div><div><h3>Слово дня</h3><p>Угадай слово из пяти букв за шесть попыток.</p></div></div>
+        <div class="rules"><b>Подсказки</b><span>Зелёный — буква на месте. Золотой — буква есть, но в другом месте. Слово меняется каждый день.</span></div>
+        <div id="wordBoard" class="word-board" aria-label="Попытки угадать слово"></div>
+        <form id="wordForm" class="word-form"><input id="wordInput" class="code-input" maxlength="5" autocomplete="off" placeholder="ПЯТЬ БУКВ" aria-label="Твоё слово"><button class="primary-button" type="submit">Проверить ↗</button></form>
+        <div id="wordMessage" class="notice" role="status" hidden></div>
       </section>
       <div id="gameMessage" class="notice" role="status" hidden></div>
     </section>

@@ -297,13 +297,201 @@
   }
 
   function setGameTab(game) {
-    const ticTacToe = game === 'ttt';
-    $('#tttTab').classList.toggle('active', ticTacToe);
-    $('#codeTab').classList.toggle('active', !ticTacToe);
-    $('#tttSection').hidden = !ticTacToe;
-    $('#codeSection').hidden = ticTacToe;
+    const games = ['ttt', 'code', 'memory', 'reaction', 'word'];
+    games.forEach((name) => {
+      $('#' + name + 'Tab').classList.toggle('active', game === name);
+      $('#' + name + 'Section').hidden = game !== name;
+    });
     clearNotice(gameMessage);
   }
+
+  // Solo arcade games: these run locally, so a profile is not required for the mini-game logic.
+  const memoryIcons = ['🌙', '🍓', '🛴', '🧸', '⭐', '🎧'];
+  let memoryDeck = [];
+  let memoryOpen = [];
+  let memoryMatched = new Set();
+  let memoryMoves = 0;
+  let memoryStarted = 0;
+  let memoryTimer = 0;
+  let reactionPhase = 'idle';
+  let reactionTimeout = 0;
+  let reactionResults = [];
+  let reactionRound = 0;
+  const todayWord = ['МЕЧТА', 'ИСКРА', 'ВЕСНА', 'ПТИЦА', 'ДОЖДЬ'][Math.floor(Date.now() / 86400000) % 5];
+  let wordAttempt = 0;
+  let wordDone = false;
+
+  function startMemory() {
+    clearInterval(memoryTimer);
+    memoryDeck = [...memoryIcons, ...memoryIcons].map((icon, id) => ({ icon, id, sort: Math.random() })).sort((a, b) => a.sort - b.sort);
+    memoryOpen = [];
+    memoryMatched = new Set();
+    memoryMoves = 0;
+    memoryStarted = Date.now();
+    $('#memoryMoves').textContent = '0';
+    $('#memoryMessage').hidden = true;
+    renderMemory();
+    memoryTimer = window.setInterval(() => {
+      if (!memoryStarted || memoryMatched.size === memoryDeck.length) return;
+      const seconds = Math.floor((Date.now() - memoryStarted) / 1000);
+      $('#memoryTime').textContent = String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0');
+    }, 500);
+  }
+
+  function renderMemory() {
+    const board = $('#memoryBoard');
+    board.replaceChildren();
+    memoryDeck.forEach((card, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'memory-card' + (memoryOpen.includes(index) ? ' is-open' : '') + (memoryMatched.has(index) ? ' is-matched' : '');
+      button.textContent = memoryOpen.includes(index) || memoryMatched.has(index) ? card.icon : '✦';
+      button.setAttribute('aria-label', memoryOpen.includes(index) || memoryMatched.has(index) ? card.icon : 'Скрытая карточка');
+      button.disabled = memoryMatched.has(index) || memoryOpen.includes(index) || memoryOpen.length >= 2;
+      button.addEventListener('click', () => flipMemory(index));
+      board.append(button);
+    });
+  }
+
+  function flipMemory(index) {
+    if (memoryOpen.length >= 2 || memoryMatched.has(index)) return;
+    memoryOpen.push(index);
+    renderMemory();
+    if (memoryOpen.length !== 2) return;
+    memoryMoves += 1;
+    $('#memoryMoves').textContent = String(memoryMoves);
+    const [first, second] = memoryOpen;
+    if (memoryDeck[first].icon === memoryDeck[second].icon) {
+      memoryMatched.add(first);
+      memoryMatched.add(second);
+      memoryOpen = [];
+      renderMemory();
+      if (memoryMatched.size === memoryDeck.length) {
+        clearInterval(memoryTimer);
+        const seconds = Math.floor((Date.now() - memoryStarted) / 1000);
+        const score = memoryMoves + Math.ceil(seconds / 10);
+        const old = Number(localStorage.getItem('egor_memory_best') || '0');
+        if (!old || score < old) localStorage.setItem('egor_memory_best', String(score));
+        $('#memoryBest').textContent = localStorage.getItem('egor_memory_best') + ' очков';
+        showNotice($('#memoryMessage'), 'Все пары найдены! Отличная память ✨', 'success');
+        $('#memoryBoard').classList.add('game-win');
+        setTimeout(() => $('#memoryBoard').classList.remove('game-win'), 900);
+      }
+    } else {
+      window.setTimeout(() => { memoryOpen = []; renderMemory(); }, 700);
+    }
+  }
+
+  function nextReactionRound() {
+    clearTimeout(reactionTimeout);
+    reactionPhase = 'waiting';
+    $('#reactionArena').className = 'reaction-arena is-waiting';
+    $('#reactionLabel').textContent = 'Смотри на центр…';
+    $('#reactionStart').textContent = 'Жду сигнал';
+    $('#reactionStart').disabled = true;
+    reactionTimeout = window.setTimeout(() => {
+      reactionPhase = 'go';
+      $('#reactionArena').className = 'reaction-arena is-go';
+      $('#reactionLabel').textContent = 'ЖМИ!';
+      $('#reactionStart').textContent = 'НАЖМИ СЕЙЧАС';
+      $('#reactionStart').disabled = false;
+      reactionTimeout = Date.now();
+    }, 1200 + Math.random() * 2600);
+  }
+
+  function reactionClick() {
+    if (reactionPhase === 'idle' || reactionPhase === 'done') {
+      reactionResults = [];
+      reactionRound = 0;
+      $('#reactionRounds').textContent = '0/5';
+      nextReactionRound();
+      return;
+    }
+    if (reactionPhase === 'between') return nextReactionRound();
+    if (reactionPhase === 'waiting') {
+      clearTimeout(reactionTimeout);
+      reactionPhase = 'idle';
+      $('#reactionArena').className = 'reaction-arena is-false';
+      $('#reactionLabel').textContent = 'Фальстарт! Подожди сигнал.';
+      $('#reactionStart').textContent = 'Попробовать ещё';
+      $('#reactionStart').disabled = false;
+      return;
+    }
+    if (reactionPhase !== 'go') return;
+    const ms = Date.now() - reactionTimeout;
+    reactionResults.push(ms);
+    reactionRound += 1;
+    $('#reactionResult').textContent = ms + ' мс';
+    $('#reactionRounds').textContent = reactionRound + '/5';
+    const old = Number(localStorage.getItem('egor_reaction_best') || '0');
+    if (!old || ms < old) localStorage.setItem('egor_reaction_best', String(ms));
+    $('#reactionBest').textContent = localStorage.getItem('egor_reaction_best') + ' мс';
+    if (reactionRound >= 5) {
+      reactionPhase = 'done';
+      const avg = Math.round(reactionResults.reduce((sum, value) => sum + value, 0) / reactionResults.length);
+      $('#reactionArena').className = 'reaction-arena is-done';
+      $('#reactionLabel').textContent = 'Среднее: ' + avg + ' мс — ' + (avg < 260 ? 'молниеносно!' : avg < 360 ? 'классный результат!' : 'ещё раунд?');
+      $('#reactionStart').textContent = 'Играть ещё раз';
+      return;
+    }
+    reactionPhase = 'between';
+    $('#reactionArena').className = 'reaction-arena';
+    $('#reactionLabel').textContent = 'Раунд ' + reactionRound + '/5 · ' + ms + ' мс';
+    $('#reactionStart').disabled = false;
+    $('#reactionStart').textContent = 'Следующий раунд →';
+  }
+
+  function setupWordGame() {
+    const board = $('#wordBoard');
+    board.replaceChildren();
+    for (let row = 0; row < 6; row += 1) {
+      const line = document.createElement('div');
+      line.className = 'word-row';
+      for (let col = 0; col < 5; col += 1) {
+        const tile = document.createElement('span');
+        tile.className = 'word-tile';
+        tile.dataset.row = String(row);
+        tile.dataset.col = String(col);
+        line.append(tile);
+      }
+      board.append(line);
+    }
+  }
+
+  $('#memoryRestart').addEventListener('click', startMemory);
+  startMemory();
+  $('#memoryBest').textContent = localStorage.getItem('egor_memory_best') ? localStorage.getItem('egor_memory_best') + ' очков' : '—';
+  $('#reactionBest').textContent = localStorage.getItem('egor_reaction_best') ? localStorage.getItem('egor_reaction_best') + ' мс' : '—';
+  $('#reactionStart').addEventListener('click', reactionClick);
+  setupWordGame();
+  $('#wordForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (wordDone) return;
+    const input = $('#wordInput');
+    const guess = input.value.trim().toLocaleUpperCase('ru-RU').replace(/Ё/g, 'Е');
+    if (!/^[А-Я]{5}$/.test(guess)) return showNotice($('#wordMessage'), 'Нужно ввести ровно пять русских букв.');
+    const answer = todayWord.replace(/Ё/g, 'Е');
+    const counts = {};
+    for (const letter of answer) counts[letter] = (counts[letter] || 0) + 1;
+    const marks = Array(5).fill('miss');
+    for (let i = 0; i < 5; i += 1) if (guess[i] === answer[i]) { marks[i] = 'hit'; counts[guess[i]] -= 1; }
+    for (let i = 0; i < 5; i += 1) if (marks[i] !== 'hit' && counts[guess[i]] > 0) { marks[i] = 'near'; counts[guess[i]] -= 1; }
+    const row = wordAttempt++;
+    [...document.querySelectorAll('.word-tile')].filter((tile) => Number(tile.dataset.row) === row).forEach((tile, i) => {
+      tile.textContent = guess[i];
+      tile.classList.add(marks[i]);
+      tile.style.animationDelay = (i * 90) + 'ms';
+    });
+    input.value = '';
+    if (guess === answer || wordAttempt === 6) {
+      wordDone = true;
+      $('#wordInput').disabled = true;
+      $('#wordForm button').disabled = true;
+      showNotice($('#wordMessage'), guess === answer ? 'Угадал за ' + wordAttempt + (wordAttempt === 1 ? ' попытку! ✨' : ' попытки! ✨') : 'Сегодня было слово «' + todayWord + '». Новое появится завтра.', guess === answer ? 'success' : 'error');
+      if (guess === answer) $('#wordBoard').classList.add('game-win');
+    }
+  });
+
 
   async function createLobby(game) {
     clearNotice(gameMessage);
@@ -381,6 +569,9 @@
   $('#createCode').addEventListener('click', () => createLobby('code'));
   $('#tttTab').addEventListener('click', () => setGameTab('ttt'));
   $('#codeTab').addEventListener('click', () => setGameTab('code'));
+  $('#memoryTab').addEventListener('click', () => setGameTab('memory'));
+  $('#reactionTab').addEventListener('click', () => setGameTab('reaction'));
+  $('#wordTab').addEventListener('click', () => setGameTab('word'));
   $('#refreshButton').addEventListener('click', () => pollLobbies());
 
   (async () => {
