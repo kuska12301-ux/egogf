@@ -33,10 +33,11 @@ function loadData() {
     return {
       users: Array.isArray(parsed.users) ? parsed.users : [],
       ticTacToe: Array.isArray(parsed.ticTacToe) ? parsed.ticTacToe : [],
-      codebreaker: Array.isArray(parsed.codebreaker) ? parsed.codebreaker : []
+      codebreaker: Array.isArray(parsed.codebreaker) ? parsed.codebreaker : [],
+      wordDuel: Array.isArray(parsed.wordDuel) ? parsed.wordDuel : []
     };
   } catch {
-    return { users: [], ticTacToe: [], codebreaker: [] };
+    return { users: [], ticTacToe: [], codebreaker: [], wordDuel: [] };
   }
 }
 
@@ -158,17 +159,8 @@ function randomRoomCode() {
   let code;
   do {
     code = Array.from({ length: 5 }, () => chars[crypto.randomInt(chars.length)]).join('');
-  } while (data.ticTacToe.some((room) => room.code === code) || data.codebreaker.some((room) => room.code === code));
+  } while (data.ticTacToe.some((room) => room.code === code) || data.codebreaker.some((room) => room.code === code) || data.wordDuel.some((room) => room.code === code));
   return code;
-}
-
-function randomCode() {
-  const digits = '0123456789'.split('');
-  for (let i = digits.length - 1; i > 0; i -= 1) {
-    const j = crypto.randomInt(i + 1);
-    [digits[i], digits[j]] = [digits[j], digits[i]];
-  }
-  return digits.slice(0, 3).join('');
 }
 
 function player(user) {
@@ -200,23 +192,66 @@ function publicTtt(room, userId) {
 }
 
 function publicCode(room, userId) {
-  const players = room.players;
-  const current = players.length ? players[room.turnIndex % players.length] : null;
-  const result = {
+  const mine = room.players.find((item) => item.id === userId);
+  const opponent = room.players.find((item) => item.id !== userId);
+  return {
     id: room.id,
     code: room.code,
     createdAt: room.createdAt,
     state: room.state,
-    players,
-    guesses: room.guesses,
-    triesLeft: room.maxTurns - room.guesses.length,
-    turnPlayer: current,
-    myTurn: room.state === 'playing' && Boolean(current) && current.id === userId,
-    canJoin: (room.state === 'waiting' || room.state === 'playing') && players.length < room.maxPlayers && !players.some((item) => item.id === userId),
+    players: room.players.map(({ id, username, displayName }) => ({ id, username, displayName })),
+    myCode: mine ? mine.secret : null,
+    myGuesses: mine ? mine.guesses : [],
+    triesLeft: mine ? room.maxTurns - mine.guesses.length : room.maxTurns,
+    mySolved: Boolean(mine && mine.solved),
+    opponent: opponent ? { id: opponent.id, username: opponent.username, displayName: opponent.displayName } : null,
+    opponentSecret: room.state === 'finished' && opponent ? opponent.secret : null,
+    opponentTries: opponent ? opponent.guesses.length : 0,
+    opponentSolved: Boolean(opponent && opponent.solved),
+    canJoin: room.state === 'waiting' && room.players.length === 1 && !mine,
     winner: room.winner || null
   };
-  if (room.state === 'won' || room.state === 'lost') result.secret = room.secret;
-  return result;
+}
+
+function publicWordDuel(room, userId) {
+  const mine = room.players.find((item) => item.id === userId);
+  const opponent = room.players.find((item) => item.id !== userId);
+  return {
+    id: room.id,
+    code: room.code,
+    createdAt: room.createdAt,
+    state: room.state,
+    players: room.players.map(({ id, username, displayName }) => ({ id, username, displayName })),
+    myWord: mine ? mine.secret : null,
+    myGuesses: mine ? mine.guesses : [],
+    triesLeft: mine ? room.maxTurns - mine.guesses.length : room.maxTurns,
+    mySolved: Boolean(mine && mine.solved),
+    opponent: opponent ? { id: opponent.id, username: opponent.username, displayName: opponent.displayName } : null,
+    opponentSecret: room.state === 'finished' && opponent ? opponent.secret : null,
+    opponentTries: opponent ? opponent.guesses.length : 0,
+    opponentSolved: Boolean(opponent && opponent.solved),
+    canJoin: room.state === 'waiting' && room.players.length === 1 && !mine,
+    winner: room.winner || null
+  };
+}
+
+function validSecretCode(value) {
+  return /^(?!.*(.).*\1)[0-9]{3}$/.test(String(value || ''));
+}
+
+function validSecretWord(value) {
+  return /^[А-ЯЁ]{5}$/.test(String(value || '').trim().toLocaleUpperCase('ru-RU'));
+}
+
+function wordFeedback(answerText, guessText) {
+  const answer = answerText.replace(/Ё/g, 'Е');
+  const guess = guessText.replace(/Ё/g, 'Е');
+  const counts = {};
+  for (const letter of answer) counts[letter] = (counts[letter] || 0) + 1;
+  const marks = Array(5).fill('miss');
+  for (let i = 0; i < 5; i += 1) if (guess[i] === answer[i]) { marks[i] = 'hit'; counts[guess[i]] -= 1; }
+  for (let i = 0; i < 5; i += 1) if (marks[i] !== 'hit' && counts[guess[i]] > 0) { marks[i] = 'near'; counts[guess[i]] -= 1; }
+  return marks;
 }
 
 function tttWinner(board) {
@@ -233,6 +268,7 @@ function pruneOldGames() {
   const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
   data.ticTacToe = data.ticTacToe.filter((room) => Date.parse(room.createdAt) > cutoff);
   data.codebreaker = data.codebreaker.filter((room) => Date.parse(room.createdAt) > cutoff);
+  data.wordDuel = data.wordDuel.filter((room) => Date.parse(room.createdAt) > cutoff);
 }
 
 async function handleApi(req, res, url) {
@@ -307,8 +343,12 @@ async function handleApi(req, res, url) {
         mine: data.ticTacToe.filter(own).slice(-20).reverse().map((room) => publicTtt(room, user.id))
       },
       codebreaker: {
-        open: data.codebreaker.filter((room) => (room.state === 'waiting' || room.state === 'playing') && room.players.length < room.maxPlayers && !room.players.some((item) => item.id === user.id)).map((room) => publicCode(room, user.id)),
-        mine: data.codebreaker.filter(own).slice(-20).reverse().map((room) => publicCode(room, user.id))
+        open: data.codebreaker.filter((room) => room.players && room.players[0] && room.players[0].secret && room.state === 'waiting' && !room.players.some((item) => item.id === user.id)).map((room) => publicCode(room, user.id)),
+        mine: data.codebreaker.filter((room) => room.players && room.players.some((item) => item.id === user.id && item.secret)).slice(-20).reverse().map((room) => publicCode(room, user.id))
+      },
+      wordDuel: {
+        open: data.wordDuel.filter((room) => room.state === 'waiting' && !room.players.some((item) => item.id === user.id)).map((room) => publicWordDuel(room, user.id)),
+        mine: data.wordDuel.filter(own).slice(-20).reverse().map((room) => publicWordDuel(room, user.id))
       }
     });
   }
@@ -364,17 +404,17 @@ async function handleApi(req, res, url) {
   }
 
   if (req.method === 'POST' && url.pathname === '/api/code/lobbies') {
+    let body;
+    try { body = await readJson(req); } catch { return fail(res, 400, 'Введи свой трёхзначный код.'); }
+    const secret = String(body.secret || '');
+    if (!validSecretCode(secret)) return fail(res, 400, 'Задай три разные цифры, например 482.');
     const room = {
       id: crypto.randomBytes(12).toString('hex'),
       code: randomRoomCode(),
       createdAt: new Date().toISOString(),
       state: 'waiting',
-      players: [player(user)],
-      turnIndex: 0,
-      maxPlayers: 4,
+      players: [{ ...player(user), secret, guesses: [], solved: false }],
       maxTurns: 8,
-      secret: randomCode(),
-      guesses: [],
       winner: null
     };
     data.codebreaker.push(room);
@@ -387,34 +427,103 @@ async function handleApi(req, res, url) {
     const room = findRoom(data.codebreaker, match[1]);
     if (!room) return fail(res, 404, 'Комната не найдена.');
     if (match[2] === 'join') {
-      if (room.state !== 'waiting' && room.state !== 'playing') return fail(res, 409, 'Эта игра уже завершена.');
+      if (room.state !== 'waiting') return fail(res, 409, 'Эта игра уже началась.');
       if (room.players.some((item) => item.id === user.id)) return fail(res, 409, 'Ты уже в этой комнате.');
-      if (room.players.length >= room.maxPlayers) return fail(res, 409, 'В комнате уже 4 игрока.');
-      room.players.push(player(user));
-      if (room.players.length >= 2 && room.state === 'waiting') room.state = 'playing';
+      let body;
+      try { body = await readJson(req); } catch { return fail(res, 400, 'Введи свой трёхзначный код.'); }
+      const secret = String(body.secret || '');
+      if (!validSecretCode(secret)) return fail(res, 400, 'Задай три разные цифры, например 739.');
+      room.players.push({ ...player(user), secret, guesses: [], solved: false });
+      room.state = 'playing';
       persist();
       return sendJson(res, 200, { lobby: publicCode(room, user.id) });
     }
     let body;
     try { body = await readJson(req); } catch { return fail(res, 400, 'Введи три разные цифры.'); }
     if (room.state !== 'playing') return fail(res, 409, 'Игра пока ждёт второго игрока или уже закончена.');
-    const current = room.players[room.turnIndex % room.players.length];
-    if (!current || current.id !== user.id) return fail(res, 409, 'Сейчас ход другого игрока.');
+    const current = room.players.find((item) => item.id === user.id);
+    const target = room.players.find((item) => item.id !== user.id);
+    if (!current || !target) return fail(res, 403, 'Ты не участник этой дуэли.');
+    if (current.solved || current.guesses.length >= room.maxTurns) return fail(res, 409, 'Твои попытки уже закончились.');
     const digits = String(body.digits || '');
-    if (!/^(?!.*(.).*\1)[0-9]{3}$/.test(digits)) return fail(res, 400, 'Нужны три разные цифры от 0 до 9.');
-    const exact = [...digits].filter((digit, index) => digit === room.secret[index]).length;
-    const common = [...digits].filter((digit) => room.secret.includes(digit)).length;
-    room.guesses.push({ digits, exact, misplaced: common - exact, by: player(user), at: new Date().toISOString() });
-    if (exact === 3) {
-      room.state = 'won';
-      room.winner = 'team';
+    if (!validSecretCode(digits)) return fail(res, 400, 'Нужны три разные цифры от 0 до 9.');
+    const exact = [...digits].filter((digit, index) => digit === target.secret[index]).length;
+    const common = [...digits].filter((digit) => target.secret.includes(digit)).length;
+    current.guesses.push({ digits, exact, misplaced: common - exact, at: new Date().toISOString() });
+    if (exact === 3) current.solved = true;
+    const finished = room.players.every((item) => item.solved || item.guesses.length >= room.maxTurns);
+    if (finished) {
+      room.state = 'finished';
+      const solved = room.players.filter((item) => item.solved);
+      if (solved.length === 1) room.winner = player(data.users.find((item) => item.id === solved[0].id));
+      else if (solved.length === 2 && solved[0].guesses.length !== solved[1].guesses.length) {
+        const quicker = solved[0].guesses.length < solved[1].guesses.length ? solved[0] : solved[1];
+        room.winner = player(data.users.find((item) => item.id === quicker.id));
+      } else room.winner = null;
       updateGamesPlayed(room.players);
-    } else if (room.guesses.length >= room.maxTurns) {
-      room.state = 'lost';
-      updateGamesPlayed(room.players);
-    } else room.turnIndex = (room.turnIndex + 1) % room.players.length;
+    }
     persist();
     return sendJson(res, 200, { lobby: publicCode(room, user.id) });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/word/lobbies') {
+    let body;
+    try { body = await readJson(req); } catch { return fail(res, 400, 'Введи слово из пяти букв.'); }
+    const secret = cleanText(body.secret, 5).toLocaleUpperCase('ru-RU');
+    if (!validSecretWord(secret)) return fail(res, 400, 'Загадай слово из пяти русских букв.');
+    const room = {
+      id: crypto.randomBytes(12).toString('hex'),
+      code: randomRoomCode(),
+      createdAt: new Date().toISOString(),
+      state: 'waiting',
+      players: [{ ...player(user), secret, guesses: [], solved: false }],
+      maxTurns: 8,
+      winner: null
+    };
+    data.wordDuel.push(room);
+    persist();
+    return sendJson(res, 201, { lobby: publicWordDuel(room, user.id) });
+  }
+
+  match = url.pathname.match(/^\/api\/word\/lobbies\/([a-f0-9]+)\/(join|guess)$/);
+  if (req.method === 'POST' && match) {
+    const room = findRoom(data.wordDuel, match[1]);
+    if (!room) return fail(res, 404, 'Комната не найдена.');
+    let body;
+    try { body = await readJson(req); } catch { return fail(res, 400, 'Проверь слово и попробуй ещё раз.'); }
+    if (match[2] === 'join') {
+      if (room.state !== 'waiting') return fail(res, 409, 'Эта игра уже началась.');
+      if (room.players.some((item) => item.id === user.id)) return fail(res, 409, 'Ты уже в этой комнате.');
+      const secret = cleanText(body.secret, 5).toLocaleUpperCase('ru-RU');
+      if (!validSecretWord(secret)) return fail(res, 400, 'Загадай слово из пяти русских букв.');
+      room.players.push({ ...player(user), secret, guesses: [], solved: false });
+      room.state = 'playing';
+      persist();
+      return sendJson(res, 200, { lobby: publicWordDuel(room, user.id) });
+    }
+    if (room.state !== 'playing') return fail(res, 409, 'Дождись второго игрока или игра уже закончилась.');
+    const current = room.players.find((item) => item.id === user.id);
+    const target = room.players.find((item) => item.id !== user.id);
+    if (!current || !target) return fail(res, 403, 'Ты не участник этой дуэли.');
+    if (current.solved || current.guesses.length >= room.maxTurns) return fail(res, 409, 'Твои попытки уже закончились.');
+    const guess = cleanText(body.guess, 5).toLocaleUpperCase('ru-RU');
+    if (!validSecretWord(guess)) return fail(res, 400, 'Введи слово из пяти русских букв.');
+    const marks = wordFeedback(target.secret, guess);
+    current.guesses.push({ guess, marks, at: new Date().toISOString() });
+    if (marks.every((mark) => mark === 'hit')) current.solved = true;
+    const finished = room.players.every((item) => item.solved || item.guesses.length >= room.maxTurns);
+    if (finished) {
+      room.state = 'finished';
+      const solved = room.players.filter((item) => item.solved);
+      if (solved.length === 1) room.winner = player(data.users.find((item) => item.id === solved[0].id));
+      else if (solved.length === 2 && solved[0].guesses.length !== solved[1].guesses.length) {
+        const quicker = solved[0].guesses.length < solved[1].guesses.length ? solved[0] : solved[1];
+        room.winner = player(data.users.find((item) => item.id === quicker.id));
+      } else room.winner = null;
+      updateGamesPlayed(room.players);
+    }
+    persist();
+    return sendJson(res, 200, { lobby: publicWordDuel(room, user.id) });
   }
 
   return fail(res, 404, 'Такого действия нет.');
